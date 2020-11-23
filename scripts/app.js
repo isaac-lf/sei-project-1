@@ -81,11 +81,14 @@ function init() {
   ]
 
   const tetrominoes = [O, L, J, S, Z, T, I]
+  const tetrominoOrientations = ['wide', 'tall', 'wide', 'tall']
   const tetrominoColors = ['yellow', 'orange', 'blue', 'green', 'red', 'purple', 'skyblue']
   
   let currentIndex
   let currentTetrominoRotations
   let currentTetromino
+  let orientations
+  let orientation
   let currentColor
 
   const startingPosition = 14
@@ -116,6 +119,8 @@ function init() {
     currentIndex = index
     currentTetrominoRotations = [...tetrominoes[currentIndex]]
     currentTetromino = currentTetrominoRotations[0]
+    orientations = [...tetrominoOrientations]
+    orientation = orientations[0]
     currentColor = tetrominoColors[currentIndex]
   }
   
@@ -200,39 +205,44 @@ function init() {
 
   // * Check whether or not tetromino can move left (returns true if it cannot)
   function cannotMoveLeft(currentTetromino) {
-    return atLeftEdge(currentTetromino) || hasPieceLeft()
+    return atLeftEdge(currentTetromino) || hasPieceLeft(currentTetromino)
   }
 
   // * Check whether or not tetromino can move right (returns true if it cannot)
   function cannotMoveRight(currentTetromino) {
-    return atRightEdge(currentTetromino) || hasPieceRight()
+    return atRightEdge(currentTetromino) || hasPieceRight(currentTetromino)
   }
 
   // * Check if tetromino is at left edge of the grid
   function atLeftEdge(currentTetromino) {
-    return currentTetromino.some(position => {
-      return (currentPosition + position) % width === 0 
-    })
+    return inColumnN(currentTetromino, 0)
   }
 
   // * Check if tetromino is at right edge of the grid
   function atRightEdge(currentTetromino) {
+    return inColumnN(currentTetromino, width - 1)
+  }
+
+  // * Check if tetrimino is in column n
+  function inColumnN(currentTetromino, n) {
     return currentTetromino.some(position => {
-      return (currentPosition + position) % width === width - 1
+      return (currentPosition + position) % width === n
     })
   }
 
   // * Check if tetromino has piece(s) to the left of it
-  function hasPieceLeft() {
+  function hasPieceLeft(currentTetromino) {
     return currentTetromino.some(position => {
       return cells[currentPosition + position - 1].classList.contains('occupied')
     })
   }
 
   // * Check if tetromino has piece(s) to the right of it
-  function hasPieceRight() {
+  function hasPieceRight(currentTetromino) {
     return currentTetromino.some(position => {
-      if (currentPosition + position + 1 >= cellCount) return false
+      if (currentPosition + position + 1 >= cellCount) {
+        return false
+      }
       return cells[currentPosition + position + 1].classList.contains('occupied')
     })
   }
@@ -273,6 +283,8 @@ function init() {
     if (canRotate(currentTetromino)) {
       currentTetrominoRotations.push(currentTetrominoRotations.shift())
       currentTetromino = currentTetrominoRotations[0]
+      orientations.push(orientations.shift())
+      orientation = orientations[0]
     }
     addTetromino()
   }
@@ -280,28 +292,58 @@ function init() {
   // * Check if tetromino can be rotated
   // * Push rotated tetromino if it needs to be pushed
   function canRotate(currentTetromino) {
+    if (currentIndex === 0) return true
     const nextRotation = currentTetrominoRotations[1]
     const storedPosition = currentPosition
     while (wouldLeaveGrid(nextRotation)) {
       currentPosition -= width
     }
-    if (hasPieceLeft() && hasPieceRight()) {
-      if (wouldOverlapPiece(nextRotation)) return false
-    } else if (atLeftEdge(currentTetromino) && hasPieceRight()) {
-      if (wouldOverlapPiece(nextRotation) || atRightEdge(nextRotation)) return false
-    } else if (atRightEdge(currentTetromino) && hasPieceLeft()) {
-      if (wouldOverlapPiece(nextRotation) || atLeftEdge(nextRotation)) return false
-    } else if (hasPieceLeft()) {
-      if (wouldOverlapPiece(nextRotation)) currentPosition++
-    } else if (hasPieceRight()) {
-      if (wouldOverlapPiece(nextRotation)) currentPosition--
-    } else if (atLeftEdge(currentTetromino)) {
-      if (atRightEdge(nextRotation)) currentPosition++
-    } else if (atRightEdge(currentTetromino)) {
-      if (atLeftEdge(nextRotation)) currentPosition--
-    }
-    if (wouldOverlapPiece(nextRotation)) {
-      currentPosition -= width
+    if (currentIndex !== 6) {
+      if (orientation === 'tall') {
+        if (atLeftEdge(currentTetromino)) {
+          if (atRightEdge(nextRotation)) currentPosition++
+        } else if (atRightEdge(currentTetromino)) {
+          if (atLeftEdge(nextRotation)) currentPosition--
+        } else if (hasPieceLeft(currentTetromino)) {
+          if (wouldOverlapPiece(nextRotation)) currentPosition++
+        } else if (hasPieceRight(currentTetromino)) {
+          if (wouldOverlapPiece(nextRotation)) currentPosition--
+        }
+      } else {
+        if (wouldOverlapPiece(nextRotation)) currentPosition -= width
+      }
+    } else {
+      let count = 0
+      if (orientation === 'tall') {
+        if (atLeftEdge(currentTetromino) || inColumnN(currentTetromino, 1)) {
+          while ((atRightEdge(nextRotation) || wouldOverlapPiece(nextRotation)) && count < 2) {
+            currentPosition++
+            count++
+          }
+        } else if (atRightEdge(currentTetromino) || inColumnN(currentTetromino, width - 2)) {
+          while ((atLeftEdge(nextRotation) || wouldOverlapPiece(nextRotation)) && count < 2) {
+            currentPosition--
+            count++
+          }
+        } else if (hasPieceLeft(currentTetromino) || 
+          hasPieceLeft(currentTetromino.map(position => position - 1))) {
+          while (wouldOverlapPiece(nextRotation) && !atLeftEdge(nextRotation) && count < 2) {
+            currentPosition++
+            count++
+          }
+        } else if (hasPieceRight(currentTetromino) ||
+          hasPieceRight(currentTetromino.map(position => position + 1))) {
+          while (wouldOverlapPiece(nextRotation) && !atRightEdge(nextRotation) && count < 2) {
+            currentPosition--
+            count++
+          }
+        }
+      } else {
+        while (wouldOverlapPiece(nextRotation) && count < 2) {
+          currentPosition -= width
+          count++
+        }
+      }
     }
     if (wouldOverlapPiece(nextRotation)) {
       currentPosition = storedPosition
