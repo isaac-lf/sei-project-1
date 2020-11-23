@@ -13,6 +13,9 @@ function init() {
   const preview = document.querySelector('.preview')
   const previewCells = []
 
+  const hold = document.querySelector('.hold')
+  const holdCells = []
+
   // * Grid variables
   const width = 10
   const height = 20
@@ -32,9 +35,20 @@ function init() {
 
   // * Make a preview
   for (let i = 0; i < previewCellCount; i++) {
-    const previewCell = document.createElement('div')
-    preview.append(previewCell)
-    previewCells.push(previewCell)
+    const cell = document.createElement('div')
+    preview.append(cell)
+    previewCells.push(cell)
+  }
+
+  // * Hold variables
+  const holdWidth = 4
+  const holdCellCount = holdWidth ** 2
+
+  // * Make a hold
+  for (let i = 0; i < holdCellCount; i++) {
+    const cell = document.createElement('div')
+    hold.append(cell)
+    holdCells.push(cell)
   }
 
   // * Game variables
@@ -104,7 +118,7 @@ function init() {
   let timerId
   let tickRate
 
-  let hasGameOver = false
+  let isGameOver = false
   let isPaused = false
 
   let score = 0
@@ -121,8 +135,12 @@ function init() {
     [-1, 0, 1, 2]
   ]
 
-  const upcomingTetrominoes = [0,0,0]
   const previewPositions = [9, 21, 33]
+  let upcomingTetrominoes = [0,0,0]
+  
+  const holdPosition = 9
+  let heldTetromino = 0
+  let canHold
 
   // * Create new tetromino
   function newTetromino(index) {
@@ -142,6 +160,7 @@ function init() {
     removeUpcomingTetrominoes()
     updateUpcomingTetrominoes()
     addUpcomingTetrominoes()
+    canHold = true
   }
 
   // * Update upcoming tetrominoes array
@@ -190,7 +209,7 @@ function init() {
     })
   }
 
-  // * Remove upcoming tetromino from preview
+  // * Remove upcoming tetrominoes from preview
   function removeUpcomingTetrominoes() {
     upcomingTetrominoes.forEach((tetromino, index) => {
       tetromino[1].forEach(position => {
@@ -271,7 +290,10 @@ function init() {
   }
 
   // * Move tetromino down every tick
-  function startClock() {
+  function setClock() {
+    if (timerId) {
+      clearInterval(timerId)
+    }
     timerId = setInterval(softDrop, tickRate, true)
   }
 
@@ -416,6 +438,7 @@ function init() {
     currentPosition += (width * distance)
     addTetromino()
     moveTetromino(width)
+    setClock()
     score += distance * 2 * Math.ceil((level + 1) / 2)
     updateScore()
   }
@@ -432,6 +455,45 @@ function init() {
       distances.push(emptyCellsBelow)
     })
     return Math.min(...distances)
+  }
+
+  // * Hold tetromino
+  function holdTetromino() {
+    if (!heldTetromino) {
+      removeTetromino()
+      const index = currentIndex
+      heldTetromino = [index, previewTetrominoes[index], currentColor]
+      addHeldTetromino()
+      nextTetromino()
+      setClock()
+      canHold = false
+    } else if (canHold) {
+      const storedIndex = heldTetromino[0]
+      removeHeldTetromino()
+      removeTetromino()
+      const index = currentIndex
+      heldTetromino = [index, previewTetrominoes[index], currentColor]
+      addHeldTetromino()
+      newTetromino(storedIndex)
+      setClock()
+      canHold = false
+    }
+  }
+
+  // * Add held tetromino to hold
+  function addHeldTetromino() {
+    heldTetromino[1].forEach(position => {
+      holdCells[holdPosition + position].classList.add('tetromino')
+      holdCells[holdPosition + position].style.backgroundColor = heldTetromino[2]
+    })
+  }
+
+  // * Remove held tetromino from hold
+  function removeHeldTetromino() {
+    heldTetromino[1].forEach(position => {
+      holdCells[holdPosition + position].classList.remove('tetromino')
+      holdCells[holdPosition + position].style.backgroundColor = ''
+    })
   }
 
   // * Clear any full lines
@@ -458,8 +520,7 @@ function init() {
         if (lines % 10 === 0) {
           level++
           calculateTickRate()
-          clearInterval(timerId)
-          startClock()
+          setClock()
         }
       }
     }
@@ -506,10 +567,20 @@ function init() {
   // * Game over if starting position is occupied
   function gameOver() {
     if (wouldOverlapPiece(currentTetromino)) {
-      hasGameOver = true
+      isGameOver = true
       clearInterval(timerId)
       cells.forEach(cell => {
         if (cell.classList.contains('occupied') && !cell.classList.contains('active')) {
+          cell.style.backgroundColor = '#777'
+        }
+      })
+      previewCells.forEach(cell => {
+        if (cell.classList.contains('tetromino')) {
+          cell.style.backgroundColor = '#777'
+        }
+      })
+      holdCells.forEach(cell => {
+        if (cell.classList.contains('tetromino')) {
           cell.style.backgroundColor = '#777'
         }
       })
@@ -528,7 +599,7 @@ function init() {
     }
     addUpcomingTetrominoes()
     calculateTickRate()
-    startClock()
+    setClock()
   }
 
   // * Pause game
@@ -540,30 +611,35 @@ function init() {
   // * Resume game
   function resumeGame() {
     isPaused = false
-    startClock()
+    setClock()
   }
 
   // * Restart game after game over
   function restartGame() {
-    hasGameOver = false
-    resetVariables()
     cells.forEach(cell => {
       cell.classList.remove('occupied', 'tetromino')
       cell.style.backgroundColor = ''
     })
+    removeUpcomingTetrominoes()
+    removeHeldTetromino()
+    resetVariables()
     startGame()
   }
 
   // * Reset game variables
   function resetVariables() {
+    isGameOver = false
     score = 0
     level = 1
     lines = 0
+    upcomingTetrominoes = [0,0,0]
+    heldTetromino = 0
+    canHold = true
   }
 
   // * Handle keydown events - move / rotate / drop tetromino
   function handleKeyDown(e) {
-    if (isPaused || hasGameOver) {
+    if (isPaused || isGameOver) {
       return
     }
     switch (e.keyCode) {
@@ -588,6 +664,9 @@ function init() {
         break
       case 32: // space bar
         hardDrop()
+        break
+      case 72: // h key
+        holdTetromino()
         break
     }
   }

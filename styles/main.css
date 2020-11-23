@@ -21,8 +21,35 @@ body {
   width: 120px;
   height: 30px;
   position: relative;
-  top: -195px;
+  top: -120px;
   cursor: pointer;
+}
+
+.hold-label {
+  height: 30px;
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  top: -90px;
+}
+
+.hold {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-content: space-between;
+  position: relative;
+  top: -90px;
+}
+
+.hold div {
+  width: calc(25% - 2px);
+  height: calc(25% - 2px);
+  border: 1px solid #ddd;
+  background-color: #eee;
 }
 
 .scoreboard {
@@ -33,7 +60,7 @@ body {
   align-items: center;
   justify-content: space-evenly;
   position: relative;
-  top: -165px;
+  top: -60px;
   border: 1px solid #ddd;
 }
 
@@ -80,9 +107,19 @@ body {
 .right-wrapper {
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   margin-left: 30px;
+}
+
+.preview-label {
+  height: 30px;
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  top: -135px;
 }
 
 .preview {
@@ -93,7 +130,7 @@ body {
   justify-content: space-between;
   align-content: space-between;
   position: relative;
-  top: -150px;
+  top: -135px;
 }
 
 .preview div {
