@@ -4,8 +4,14 @@ function init() {
   const grid = document.querySelector('.grid')
   let cells = []
 
-  const display = document.querySelector('.up-next-display')
-  const displayCells = []
+  const startBtn = document.querySelector('.start-button')
+
+  const scoreBox = document.querySelector('.score')
+  const levelBox = document.querySelector('.level')
+  const linesBox = document.querySelector('.lines')
+
+  const preview = document.querySelector('.preview')
+  const previewCells = []
 
   // * Grid variables
   const width = 10
@@ -19,15 +25,16 @@ function init() {
     cells.push(cell)
   }
 
-  // * Up next display variables
-  const displayWidth = 4
-  const displayCellCount = displayWidth ** 2
+  // * Preview variables
+  const previewWidth = 4
+  const previewHeight = 10
+  const previewCellCount = previewWidth * previewHeight
 
-  // * Make an up next display
-  for (let i = 0; i < displayCellCount; i++) {
-    const displayCell = document.createElement('div')
-    display.append(displayCell)
-    displayCells.push(displayCell)
+  // * Make a preview
+  for (let i = 0; i < previewCellCount; i++) {
+    const previewCell = document.createElement('div')
+    preview.append(previewCell)
+    previewCells.push(previewCell)
   }
 
   // * Game variables
@@ -85,60 +92,69 @@ function init() {
   const tetrominoColors = ['yellow', 'orange', 'blue', 'green', 'red', 'purple', 'skyblue']
   
   let currentIndex
-  let currentTetrominoRotations
+  let currentRotations
   let currentTetromino
-  let orientations
-  let orientation
+  let currentOrientations
+  let currentOrientation
   let currentColor
 
   const startingPosition = 14
   let currentPosition = startingPosition
 
   let timerId
-  let tick = 1000 // 1000 milliseconds = 1 second
-  let hasLost = false
+  let tickRate
 
-  const nextTetrominoes = [
-    [0, -displayWidth, -displayWidth + 1, 1],
-    [-1, 0, 1, -displayWidth + 1],
-    [-displayWidth - 1, -1, 0, 1],
-    [-1, 0, -displayWidth, -displayWidth + 1],
-    [-displayWidth - 1, -displayWidth, 0, 1],
-    [-1, 0, -displayWidth, 1],
+  let hasGameOver = false
+  let isPaused = false
+
+  let score = 0
+  let level = 1
+  let lines = 0
+
+  const previewTetrominoes = [
+    [0, -previewWidth, -previewWidth + 1, 1],
+    [-1, 0, 1, -previewWidth + 1],
+    [-previewWidth - 1, -1, 0, 1],
+    [-1, 0, -previewWidth, -previewWidth + 1],
+    [-previewWidth - 1, -previewWidth, 0, 1],
+    [-1, 0, -previewWidth, 1],
     [-1, 0, 1, 2]
   ]
 
-  let nextIndex
-  let nextTetromino
-  let nextColor
-
-  const displayStartingPosition = 5
+  const upcomingTetrominoes = [0,0,0]
+  const previewPositions = [9, 21, 33]
 
   // * Create new tetromino
   function newTetromino(index) {
     currentIndex = index
-    currentTetrominoRotations = [...tetrominoes[currentIndex]]
-    currentTetromino = currentTetrominoRotations[0]
-    orientations = [...tetrominoOrientations]
-    orientation = orientations[0]
-    currentColor = tetrominoColors[currentIndex]
-  }
-  
-  // * Create new next tetromino
-  function newNextTetromino() {
-    nextIndex = randomIndex()
-    nextTetromino = nextTetrominoes[nextIndex]
-    nextColor = tetrominoColors[nextIndex]
-  }
-
-  // * Cycle to next tetromino
-  function cycleTetromino() {
-    newTetromino(nextIndex)
+    currentRotations = [...tetrominoes[index]]
+    currentTetromino = currentRotations[0]
+    currentOrientations = [...tetrominoOrientations]
+    currentOrientation = currentOrientations[0]
+    currentColor = tetrominoColors[index]
     currentPosition = startingPosition
     addTetromino()
-    removeNextTetromino()
-    newNextTetromino()
-    addNextTetromino()
+  }
+
+  // * Introduce next upcoming tetromino
+  function nextTetromino() {
+    newTetromino(upcomingTetrominoes[0][0])
+    removeUpcomingTetrominoes()
+    updateUpcomingTetrominoes()
+    addUpcomingTetrominoes()
+  }
+
+  // * Update upcoming tetrominoes array
+  function updateUpcomingTetrominoes() {
+    upcomingTetrominoes[0] = upcomingTetrominoes[1]
+    upcomingTetrominoes[1] = upcomingTetrominoes[2]
+    upcomingTetrominoes[2] = randomTetromino()
+  }
+
+  // * Return random tetromino
+  function randomTetromino() {
+    const index = randomIndex()
+    return [index, previewTetrominoes[index], tetrominoColors[index]]
   }
 
   // * Return random index of tetrominoes array
@@ -149,43 +165,46 @@ function init() {
   // * Add / replace tetromino on grid
   function addTetromino() {
     currentTetromino.forEach(position => {
-      cells[currentPosition + position].classList.add('tetromino')
+      cells[currentPosition + position].classList.add('tetromino', 'active')
       cells[currentPosition + position].style.backgroundColor = currentColor
     })
-    projectTetromino()
+    addGhost()
   }
 
   // * Remove tetromino from grid
   function removeTetromino() {
     currentTetromino.forEach(position => {
-      cells[currentPosition + position].classList.remove('tetromino')
+      cells[currentPosition + position].classList.remove('tetromino', 'active')
       cells[currentPosition + position].style.backgroundColor = ''
     })
-    removeProjection()
+    removeGhost()
   }
 
-  // * Add next tetromino to display
-  function addNextTetromino() {
-    nextTetromino.forEach(position => {
-      displayCells[displayStartingPosition + position].classList.add('tetromino')
-      displayCells[displayStartingPosition + position].style.backgroundColor = nextColor
+  // * Add upcoming tetrominoes to preview
+  function addUpcomingTetrominoes() {
+    upcomingTetrominoes.forEach((tetromino, index) => {
+      tetromino[1].forEach(position => {
+        previewCells[previewPositions[index] + position].classList.add('tetromino')
+        previewCells[previewPositions[index] + position].style.backgroundColor = tetromino[2]
+      })
     })
   }
 
-  // * Remove next tetromino from display
-  function removeNextTetromino() {
-    nextTetromino.forEach(position => {
-      displayCells[displayStartingPosition + position].classList.remove('tetromino')
-      displayCells[displayStartingPosition + position].style.backgroundColor = ''
+  // * Remove upcoming tetromino from preview
+  function removeUpcomingTetrominoes() {
+    upcomingTetrominoes.forEach((tetromino, index) => {
+      tetromino[1].forEach(position => {
+        previewCells[previewPositions[index] + position].classList.remove('tetromino')
+        previewCells[previewPositions[index] + position].style.backgroundColor = ''
+      })
     })
   }
 
-  // * Move tetromino down every tick
-  timerId = setInterval(moveTetromino, tick, width)
-
-  // * Attempt to move tetromino
+  // * Attempt to move tetromino left or right
   function moveTetromino(direction) {
-    if (cannotMove(direction)) return
+    if (cannotMove(direction)) {
+      return
+    }
     removeTetromino()
     currentPosition += direction
     addTetromino()
@@ -195,56 +214,65 @@ function init() {
   function cannotMove(direction) {
     switch (direction) {
       case -1: // left
-        return cannotMoveLeft(currentTetromino)
+        return atLeftEdge() || hasPieceLeft()
       case 1: // right
-        return cannotMoveRight(currentTetromino)
+        return atRightEdge() || hasPieceRight()
       case width: // down
         return freezeTetromino()
     }
   }
 
-  // * Check whether or not tetromino can move left (returns true if it cannot)
-  function cannotMoveLeft(currentTetromino) {
-    return atLeftEdge(currentTetromino) || hasPieceLeft(currentTetromino)
-  }
-
-  // * Check whether or not tetromino can move right (returns true if it cannot)
-  function cannotMoveRight(currentTetromino) {
-    return atRightEdge(currentTetromino) || hasPieceRight(currentTetromino)
-  }
-
   // * Check if tetromino is at left edge of the grid
-  function atLeftEdge(currentTetromino) {
-    return inColumnN(currentTetromino, 0)
+  function atLeftEdge(tetromino = currentTetromino) {
+    return inColumnN(0, tetromino)
   }
 
   // * Check if tetromino is at right edge of the grid
-  function atRightEdge(currentTetromino) {
-    return inColumnN(currentTetromino, width - 1)
+  function atRightEdge(tetromino = currentTetromino) {
+    return inColumnN(width - 1, tetromino)
   }
 
-  // * Check if tetrimino is in column n
-  function inColumnN(currentTetromino, n) {
-    return currentTetromino.some(position => {
+  // * Check if tetromino is in column n
+  function inColumnN(n, tetromino = currentTetromino) {
+    return tetromino.some(position => {
       return (currentPosition + position) % width === n
     })
   }
 
   // * Check if tetromino has piece(s) to the left of it
-  function hasPieceLeft(currentTetromino) {
-    return currentTetromino.some(position => {
+  function hasPieceLeft(tetromino = currentTetromino) {
+    return tetromino.some(position => {
       return cells[currentPosition + position - 1].classList.contains('occupied')
     })
   }
 
   // * Check if tetromino has piece(s) to the right of it
-  function hasPieceRight(currentTetromino) {
-    return currentTetromino.some(position => {
+  function hasPieceRight(tetromino = currentTetromino) {
+    return tetromino.some(position => {
       if (currentPosition + position + 1 >= cellCount) {
         return false
       }
       return cells[currentPosition + position + 1].classList.contains('occupied')
     })
+  }
+
+  // * Attempt to move tetromino down
+  function softDrop(forced = false) {
+    if (cannotMove(width)) {
+      return 
+    }
+    removeTetromino()
+    currentPosition += width
+    addTetromino()
+    if (!forced) {
+      score += 1 * Math.ceil((level + 1) / 2)
+      updateScore()
+    }
+  }
+
+  // * Move tetromino down every tick
+  function startClock() {
+    timerId = setInterval(softDrop, tickRate, true)
   }
 
   // * Freeze tetromino if at bottom of grid or on top of another piece(s)
@@ -254,9 +282,10 @@ function init() {
     if (wouldLeaveGrid(movedDown) || wouldOverlapPiece(movedDown)) {
       currentTetromino.forEach(position => {
         cells[currentPosition + position].classList.add('occupied')
+        cells[currentPosition + position].classList.remove('active')
       })
-      clearRows()
-      cycleTetromino()
+      clearLines()
+      nextTetromino()
       gameOver()
       return true
     }
@@ -277,14 +306,14 @@ function init() {
     })
   }
 
-  // * Rotate tetromino
+  // * Attempt to tetromino
   function rotateTetromino() {
     removeTetromino()
     if (canRotate(currentTetromino)) {
-      currentTetrominoRotations.push(currentTetrominoRotations.shift())
-      currentTetromino = currentTetrominoRotations[0]
-      orientations.push(orientations.shift())
-      orientation = orientations[0]
+      currentRotations.push(currentRotations.shift())
+      currentTetromino = currentRotations[0]
+      currentOrientations.push(currentOrientations.shift())
+      currentOrientation = currentOrientations[0]
     }
     addTetromino()
   }
@@ -293,46 +322,54 @@ function init() {
   // * Push rotated tetromino if it needs to be pushed
   function canRotate(currentTetromino) {
     if (currentIndex === 0) return true
-    const nextRotation = currentTetrominoRotations[1]
+    const nextRotation = currentRotations[1]
     const storedPosition = currentPosition
     while (wouldLeaveGrid(nextRotation)) {
       currentPosition -= width
     }
     if (currentIndex !== 6) {
-      if (orientation === 'tall') {
-        if (atLeftEdge(currentTetromino)) {
-          if (atRightEdge(nextRotation)) currentPosition++
-        } else if (atRightEdge(currentTetromino)) {
-          if (atLeftEdge(nextRotation)) currentPosition--
-        } else if (hasPieceLeft(currentTetromino)) {
-          if (wouldOverlapPiece(nextRotation)) currentPosition++
-        } else if (hasPieceRight(currentTetromino)) {
-          if (wouldOverlapPiece(nextRotation)) currentPosition--
+      if (currentOrientation === 'tall') {
+        if (atLeftEdge()) {
+          if (atRightEdge(nextRotation)) {
+            currentPosition++
+          }
+        } else if (atRightEdge()) {
+          if (atLeftEdge(nextRotation)) {
+            currentPosition--
+          }
+        } else if (hasPieceLeft()) {
+          if (wouldOverlapPiece(nextRotation)) {
+            currentPosition++
+          }
+        } else if (hasPieceRight()) {
+          if (wouldOverlapPiece(nextRotation)) {
+            currentPosition--
+          }
         }
       } else {
-        if (wouldOverlapPiece(nextRotation)) currentPosition -= width
+        if (wouldOverlapPiece(nextRotation)) {
+          currentPosition -= width
+        }
       }
     } else {
       let count = 0
-      if (orientation === 'tall') {
-        if (atLeftEdge(currentTetromino) || inColumnN(currentTetromino, 1)) {
+      if (currentOrientation === 'tall') {
+        if (atLeftEdge() || inColumnN(1)) {
           while ((atRightEdge(nextRotation) || wouldOverlapPiece(nextRotation)) && count < 2) {
             currentPosition++
             count++
           }
-        } else if (atRightEdge(currentTetromino) || inColumnN(currentTetromino, width - 2)) {
+        } else if (atRightEdge() || inColumnN(width - 2)) {
           while ((atLeftEdge(nextRotation) || wouldOverlapPiece(nextRotation)) && count < 2) {
             currentPosition--
             count++
           }
-        } else if (hasPieceLeft(currentTetromino) || 
-          hasPieceLeft(currentTetromino.map(position => position - 1))) {
+        } else if (hasPieceLeft() || hasPieceLeft(currentTetromino.map(position => position - 1))) {
           while (wouldOverlapPiece(nextRotation) && !atLeftEdge(nextRotation) && count < 2) {
             currentPosition++
             count++
           }
-        } else if (hasPieceRight(currentTetromino) ||
-          hasPieceRight(currentTetromino.map(position => position + 1))) {
+        } else if (hasPieceRight() || hasPieceRight(currentTetromino.map(position => position + 1))) {
           while (wouldOverlapPiece(nextRotation) && !atRightEdge(nextRotation) && count < 2) {
             currentPosition--
             count++
@@ -352,57 +389,22 @@ function init() {
     return true
   }
 
-  // * Clear any full rows
-  function clearRows() {
-    for (let i = 0; i < cellCount; i += width) {
-      const rowIndices = []
-      for (let j = 0; j < width; j++) {
-        rowIndices.push(i + j)
-      }
-      if (rowIndices.every(index => {
-        return cells[index].classList.contains('occupied')
-      })) {
-        rowIndices.forEach(index => {
-          cells[index].classList.remove('tetromino')
-          cells[index].classList.remove('occupied')
-          cells[index].style.backgroundColor = ''
-        })
-        const rowCleared = cells.splice(i, width)
-        cells = rowCleared.concat(cells)
-        cells.forEach(cell => grid.append(cell))
-      }
-    }
-  }
-
-  // * Game over if starting position is occupied
-  function gameOver() {
-    if (wouldOverlapPiece(currentTetromino)) {
-      hasLost = true
-      clearInterval(timerId)
-      cells.forEach(cell => {
-        if (cell.classList.contains('occupied') || cell.classList.contains('tetromino')) {
-          cell.style.backgroundColor = '#777'
-        }
-      })
-    }
-  }
-
-  // * Project lowest possible position of tetromino
-  function projectTetromino() {
+  // * Add ghost to grid i.e. project lowest possible position of tetromino
+  function addGhost() {
     const distance = distanceToLowestPosition()
     currentTetromino.forEach(position => {
       if (!cells[currentPosition + position + (width * distance)].classList.contains('tetromino')) {
-        cells[currentPosition + position + (width * distance)].classList.add('projection')
+        cells[currentPosition + position + (width * distance)].classList.add('ghost')
         cells[currentPosition + position + (width * distance)].style.backgroundColor = currentColor
       }
     })
   }
 
-  // * Remove projection
-  function removeProjection() {
+  // * Remove ghost from grid
+  function removeGhost() {
     const distance = distanceToLowestPosition()
     currentTetromino.forEach(position => {
-      cells[currentPosition + position + (width * distance)].classList.remove('projection')
+      cells[currentPosition + position + (width * distance)].classList.remove('ghost')
       cells[currentPosition + position + (width * distance)].style.backgroundColor = ''
     })
   }
@@ -414,6 +416,8 @@ function init() {
     currentPosition += (width * distance)
     addTetromino()
     moveTetromino(width)
+    score += distance * 2 * Math.ceil((level + 1) / 2)
+    updateScore()
   }
 
   // * Return distance (in number of rows) to lowest possible position
@@ -430,9 +434,138 @@ function init() {
     return Math.min(...distances)
   }
 
-  // * Handle keydown event - move / rotate tetromino
+  // * Clear any full lines
+  function clearLines() {
+    const storedLevel = level
+    let linesCleared = 0
+    for (let i = 0; i < cellCount; i += width) {
+      const rowIndices = []
+      for (let j = 0; j < width; j++) {
+        rowIndices.push(i + j)
+      }
+      if (rowIndices.every(index => {
+        return cells[index].classList.contains('occupied')
+      })) {
+        rowIndices.forEach(index => {
+          cells[index].classList.remove('occupied', 'tetromino')
+          cells[index].style.backgroundColor = ''
+        })
+        const rowCleared = cells.splice(i, width)
+        cells = rowCleared.concat(cells)
+        cells.forEach(cell => grid.append(cell))
+        linesCleared++
+        lines++
+        if (lines % 10 === 0) {
+          level++
+          calculateTickRate()
+          clearInterval(timerId)
+          startClock()
+        }
+      }
+    }
+    if (linesCleared > 0) {
+      score += linesCleared === 4 ? 800 * storedLevel : (linesCleared * 200 - 100) * storedLevel
+      updateScore()
+      updateLevel()
+      updateLines()
+    }
+  }
+
+  // * Recalculate tick rate
+  function calculateTickRate() {
+    tickRate = Math.floor(1000 * Math.exp(-(level - 1) / 20))
+  }
+
+  // * Update score
+  function updateScore() {
+    if (score > 999999) {
+      scoreBox.innerHTML = '999,999'
+    } else if (score >= 1000) {
+      if (score % 1000 < 10) {
+        scoreBox.innerHTML = `${Math.floor(score / 1000)},00${score % 1000}`
+      } else if (score % 1000 < 100) {
+        scoreBox.innerHTML = `${Math.floor(score / 1000)},0${score % 1000}`
+      } else {
+        scoreBox.innerHTML = `${Math.floor(score / 1000)},${score % 1000}`
+      }
+    } else {
+      scoreBox.innerHTML = score
+    }
+  }
+
+  // * Update level
+  function updateLevel() {
+    levelBox.innerHTML = level
+  }
+
+  // * Update number of lines cleared
+  function updateLines() {
+    linesBox.innerHTML = lines
+  }
+
+  // * Game over if starting position is occupied
+  function gameOver() {
+    if (wouldOverlapPiece(currentTetromino)) {
+      hasGameOver = true
+      clearInterval(timerId)
+      cells.forEach(cell => {
+        if (cell.classList.contains('occupied') && !cell.classList.contains('active')) {
+          cell.style.backgroundColor = '#777'
+        }
+      })
+      startBtn.innerHTML = 'Restart'
+    }
+  }
+
+  // * Start game
+  function startGame() {
+    updateScore()
+    updateLevel()
+    updateLines()
+    newTetromino(randomIndex())
+    while (upcomingTetrominoes[0] === 0) {
+      updateUpcomingTetrominoes()
+    }
+    addUpcomingTetrominoes()
+    calculateTickRate()
+    startClock()
+  }
+
+  // * Pause game
+  function pauseGame() {
+    isPaused = true
+    clearInterval(timerId)
+  }
+
+  // * Resume game
+  function resumeGame() {
+    isPaused = false
+    startClock()
+  }
+
+  // * Restart game after game over
+  function restartGame() {
+    hasGameOver = false
+    resetVariables()
+    cells.forEach(cell => {
+      cell.classList.remove('occupied', 'tetromino')
+      cell.style.backgroundColor = ''
+    })
+    startGame()
+  }
+
+  // * Reset game variables
+  function resetVariables() {
+    score = 0
+    level = 1
+    lines = 0
+  }
+
+  // * Handle keydown events - move / rotate / drop tetromino
   function handleKeyDown(e) {
-    if (hasLost) return
+    if (isPaused || hasGameOver) {
+      return
+    }
     switch (e.keyCode) {
       case 37: // left arrow
       case 65: // a key
@@ -444,7 +577,7 @@ function init() {
         break
       case 40: // down arrow
       case 83: // s key
-        moveTetromino(width)
+        softDrop()
         break
       case 38: // up arrow
       case 87: // w key
@@ -467,14 +600,33 @@ function init() {
     hasRotated = false
   }
 
+  // * Handle click events - start / pause / resume / restart game
+  function handleStartBtnClick(e) {
+    switch (e.target.innerHTML) {
+      case 'Start':
+        startGame()
+        e.target.innerHTML = 'Pause'
+        break
+      case 'Pause':
+        pauseGame()
+        e.target.innerHTML = 'Resume'
+        break
+      case 'Resume':
+        resumeGame()
+        e.target.innerHTML = 'Pause'
+        break
+      case 'Restart':
+        restartGame()
+        e.target.innerHTML = 'Pause'
+        break
+    }
+    e.target.blur()
+  }
+
   // * Event listeners
   document.addEventListener('keydown', handleKeyDown)
   document.addEventListener('keyup', handleKeyUp)
-
-  newTetromino(randomIndex())
-  addTetromino()
-  newNextTetromino()
-  addNextTetromino()
+  startBtn.addEventListener('click', handleStartBtnClick)
 }
 
 window.addEventListener('DOMContentLoaded', init)

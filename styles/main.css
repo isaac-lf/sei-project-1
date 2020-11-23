@@ -9,6 +9,51 @@ body {
   justify-content: center;
 }
 
+.left-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-right: 30px;
+}
+
+.start-button {
+  width: 120px;
+  height: 30px;
+  position: relative;
+  top: -195px;
+  cursor: pointer;
+}
+
+.scoreboard {
+  width: 120px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  position: relative;
+  top: -165px;
+  border: 1px solid #ddd;
+}
+
+.scoreboard p {
+  height: 24px;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.scoreboard div {
+  height: 24px;
+  width: 90px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #eee;
+  border-radius: 15px;
+}
+
 .grid-wrapper {
   height: 100vh;
   display: flex;
@@ -32,32 +77,32 @@ body {
   background-color: #eee;
 }
 
-.up-next-display-wrapper {
+.right-wrapper {
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-left: 30px;
 }
 
-.up-next-display {
+.preview {
   width: 120px;
-  height: 120px;
+  height: 300px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-content: space-between;
   position: relative;
-  top: -240px;
-  margin-left: 30px;
+  top: -150px;
 }
 
-.up-next-display div {
+.preview div {
   width: calc(25% - 2px);
-  height: calc(25% - 2px);
+  height: calc(10% - 2px);
   border: 1px solid #ddd;
   background-color: #eee;
 }
 
-.grid div.projection {
+.grid div.ghost {
   opacity: 0.5;
 }
