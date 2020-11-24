@@ -97,6 +97,10 @@ body {
   align-content: space-between;
 }
 
+.buffer {
+  display: none;
+}
+
 .grid div {
   width: calc(10% - 2px);
   height: calc(5% - 2px);
