@@ -4,7 +4,8 @@ function init() {
   const grid = document.querySelector('.grid')
   let cells = []
 
-  const startBtn = document.querySelector('.start-button')
+  const startButton = document.querySelector('.start-button')
+  const pauseScreen = document.querySelector('.pause-screen')
 
   const scoreBox = document.querySelector('.score')
   const levelBox = document.querySelector('.level')
@@ -338,13 +339,21 @@ function init() {
     })
   }
 
-  // * Attempt to tetromino
-  function rotateTetromino() {
+  // * Attempt to rotate tetromino
+  function rotateTetromino(direction) {
     removeTetromino()
-    if (canRotate(currentTetromino)) {
-      currentRotations.push(currentRotations.shift())
+    if (canRotate(direction)) {
+      switch (direction) {
+        case 1: // clockwise
+          currentRotations.push(currentRotations.shift())
+          currentOrientations.push(currentOrientations.shift())
+          break
+        case 3: // counterclockwise
+          currentRotations.unshift(currentRotations.pop())
+          currentOrientations.unshift(currentOrientations.pop())
+          break
+      }
       currentTetromino = currentRotations[0]
-      currentOrientations.push(currentOrientations.shift())
       currentOrientation = currentOrientations[0]
     }
     addTetromino()
@@ -352,9 +361,9 @@ function init() {
 
   // * Check if tetromino can be rotated
   // * Push rotated tetromino if it needs to be pushed
-  function canRotate(currentTetromino) {
+  function canRotate(direction) {
     if (currentIndex === 0) return true
-    const nextRotation = currentRotations[1]
+    const nextRotation = currentRotations[direction]
     const storedPosition = currentPosition
     while (wouldLeaveGrid(nextRotation)) {
       currentPosition -= width
@@ -589,7 +598,7 @@ function init() {
           }
         })
       })
-      startBtn.innerHTML = 'Restart'
+      startButton.innerHTML = 'Restart'
     }
   }
 
@@ -611,12 +620,14 @@ function init() {
   function pauseGame() {
     isPaused = true
     clearInterval(timerId)
+    pauseScreen.style.display = 'block'
   }
 
   // * Resume game
   function resumeGame() {
     isPaused = false
     resetClock()
+    pauseScreen.style.display = 'none'
   }
 
   // * Restart game after game over
@@ -665,7 +676,13 @@ function init() {
       case 38: // up arrow
       case 87: // w key
         if (!hasRotated) {
-          rotateTetromino()
+          rotateTetromino(1)
+          hasRotated = true
+        }
+        break
+      case 16: // shift key
+        if (!hasRotated) {
+          rotateTetromino(3)
           hasRotated = true
         }
         break
@@ -712,7 +729,7 @@ function init() {
   // * Event listeners
   document.addEventListener('keydown', handleKeyDown)
   document.addEventListener('keyup', handleKeyUp)
-  startBtn.addEventListener('click', handleStartBtnClick)
+  startButton.addEventListener('click', handleStartBtnClick)
 }
 
 window.addEventListener('DOMContentLoaded', init)
