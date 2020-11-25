@@ -1,36 +1,57 @@
 function init() {
-
   // * DOM elements
   const grid = document.querySelector('.grid')
-  let cells = []
-
-  const startButton = document.querySelector('.start-button')
-  const pauseScreen = document.querySelector('.pause-screen')
+  const preview = document.querySelector('.preview')
+  const hold = document.querySelector('.hold')
 
   const scoreBox = document.querySelector('.score')
   const levelBox = document.querySelector('.level')
   const linesBox = document.querySelector('.lines')
 
-  const preview = document.querySelector('.preview')
-  const previewCells = []
+  const startScreen = document.querySelector('.start-screen')
+  const startButton = document.querySelector('.start-button')
+  const levelSpan = document.querySelector('.level-span')
+  const levelSlider = document.querySelector('input[type="range"]')
+  const leaderboards = document.querySelectorAll('.leaderboard')
 
-  const hold = document.querySelector('.hold')
-  const holdCells = []
+  const pauseButton = document.querySelector('.pause-button') 
+
+  const pauseScreen = document.querySelector('.pause-screen')
+  const resumeButton = document.querySelector('.resume-button')
+  const restartButtons = document.querySelectorAll('.restart-button')
+  const mainMenuButtons = document.querySelectorAll('.main-menu-button')
+  const showGhostCheckbox = document.querySelector('input[type="checkbox')
+
+  const endScreen = document.querySelector('.end-screen')
+  const popup = document.querySelector('.pop-up')
+  const nameField = document.querySelector('input[type="text"]')
+  const enterButton = document.querySelector('.enter-button')
+
+  const overlay = document.querySelector('.overlay')
+  const emptyGrid = document.querySelector('.empty-grid')
 
   // * Grid variables
   const width = 10
   const height = 20
   const bufferHeight = 4
-  const cellCount = width * (height + bufferHeight)
+  const bufferSize = width * bufferHeight 
+  const cellCount = width * height + bufferSize
 
   // * Make a grid
+  let cells = []
   for (let i = 0; i < cellCount; i++) {
     const cell = document.createElement('div')
-    if (i < width * bufferHeight) {
+    if (i < bufferSize) {
       cell.classList.add('buffer')
     }
     grid.append(cell)
     cells.push(cell)
+  }
+
+  // * Make an identical empty grid
+  for (let i = 0; i < cellCount - bufferSize; i++) {
+    const cell = document.createElement('div')
+    emptyGrid.append(cell)
   }
 
   // * Preview variables
@@ -39,6 +60,7 @@ function init() {
   const previewCellCount = previewWidth * previewHeight
 
   // * Make a preview
+  const previewCells = []
   for (let i = 0; i < previewCellCount; i++) {
     const cell = document.createElement('div')
     preview.append(cell)
@@ -50,6 +72,7 @@ function init() {
   const holdCellCount = holdWidth ** 2
 
   // * Make a hold
+  const holdCells = []
   for (let i = 0; i < holdCellCount; i++) {
     const cell = document.createElement('div')
     hold.append(cell)
@@ -120,16 +143,6 @@ function init() {
   const startingPosition = 14 + (width * bufferHeight)
   let currentPosition = startingPosition
 
-  let timerId
-  let tickRate
-
-  let isGameOver = false
-  let isPaused = false
-
-  let score = 0
-  let level = 1
-  let lines = 0
-
   const previewTetrominoes = [
     [0, -previewWidth, -previewWidth + 1, 1],
     [-1, 0, 1, -previewWidth + 1],
@@ -140,13 +153,33 @@ function init() {
     [-1, 0, 1, 2]
   ]
 
-  const previewPositions = [9, 21, 33]
+  const previewPositions = [9,21,33]
   let upcomingTetrominoes = [0,0,0]
   
   const holdPosition = 9
   let heldTetromino = 0
   let canHold
 
+  let timerId
+  let tickRate
+
+  let gameInProgress = false
+  let showGhost = false
+
+  let score = 0
+  let level = 1
+  let lines = 0
+
+  let highScores
+  let playerHighScores = []
+  const placeholderScores = [
+    ['', 50000],
+    ['', 25000],
+    ['', 10000],
+    ['', 5000],
+    ['', 1000]
+  ]
+  
   // * Create new tetromino
   function newTetromino(index) {
     currentIndex = index
@@ -164,6 +197,9 @@ function init() {
 
   // * Introduce next upcoming tetromino
   function nextTetromino() {
+    if (!gameInProgress) {
+      return
+    }
     newTetromino(upcomingTetrominoes[0][0])
     removeUpcomingTetrominoes()
     updateUpcomingTetrominoes()
@@ -285,9 +321,13 @@ function init() {
 
   // * Attempt to move tetromino down
   function softDrop(forced = false) {
+    if (!gameInProgress) {
+      clearInterval(timerId)
+      return
+    }
     if (cannotMove(width)) {
       if (!forced) {
-        resetClock()
+        setClock()
       }
       return
     }
@@ -300,8 +340,8 @@ function init() {
     }
   }
 
-  // * Move tetromino down every tick
-  function resetClock() {
+  // * Move tetromino down every tick of the clock
+  function setClock() {
     if (timerId) {
       clearInterval(timerId)
     }
@@ -309,7 +349,7 @@ function init() {
   }
 
   // * Freeze tetromino if at bottom of grid or on top of another piece(s)
-  // * Clear any full rows, cycle to next tetromino, check for game over
+  // * Clear any full lines, cycle to next tetromino, check for game over
   function freezeTetromino() {
     const movedDown = currentTetromino.map(position => position + width)
     if (wouldLeaveGrid(movedDown) || wouldOverlapPiece(movedDown)) {
@@ -339,6 +379,25 @@ function init() {
     })
   }
 
+  // * Game over if new tetromino in buffer
+  function gameOver() {
+    if (currentTetromino.every(position => {
+      return cells[currentPosition + position].classList.contains('buffer')
+    })) {
+      gameInProgress = false
+      clearInterval(timerId)
+      const cellsArrays = [cells, previewCells, holdCells]
+      cellsArrays.forEach(cellsArray => {
+        cellsArray.forEach(cell => {
+          if (cell.classList.contains('tetromino')) {
+            cell.style.backgroundColor = '#777'
+          }
+        })
+      })
+      showEndScreen()
+    }
+  }
+
   // * Attempt to rotate tetromino
   function rotateTetromino(direction) {
     removeTetromino()
@@ -360,7 +419,7 @@ function init() {
   }
 
   // * Check if tetromino can be rotated
-  // * Push rotated tetromino if it needs to be pushed
+  // * Push rotated tetromino if it needs to be pushed in order to rotate
   function canRotate(direction) {
     if (currentIndex === 0) return true
     const nextRotation = currentRotations[direction]
@@ -432,6 +491,9 @@ function init() {
 
   // * Add ghost to grid i.e. project lowest possible position of tetromino
   function addGhost() {
+    if (!showGhost) {
+      return
+    }
     const distance = distanceToLowestPosition()
     currentTetromino.forEach(position => {
       if (!cells[currentPosition + position + (width * distance)].classList.contains('tetromino')) {
@@ -443,6 +505,9 @@ function init() {
 
   // * Remove ghost from grid
   function removeGhost() {
+    if (!showGhost) {
+      return
+    }
     const distance = distanceToLowestPosition()
     currentTetromino.forEach(position => {
       cells[currentPosition + position + (width * distance)].classList.remove('ghost')
@@ -456,8 +521,8 @@ function init() {
     removeTetromino()
     currentPosition += (width * distance)
     addTetromino()
-    moveTetromino(width)
-    resetClock()
+    freezeTetromino()
+    setClock()
     score += distance * 2 * Math.ceil((level + 1) / 2)
     updateScore()
   }
@@ -484,7 +549,7 @@ function init() {
       heldTetromino = [index, previewTetrominoes[index], currentColor]
       addHeldTetromino()
       nextTetromino()
-      resetClock()
+      setClock()
       canHold = false
     } else if (canHold) {
       const storedIndex = heldTetromino[0]
@@ -494,7 +559,7 @@ function init() {
       heldTetromino = [index, previewTetrominoes[index], currentColor]
       addHeldTetromino()
       newTetromino(storedIndex)
-      resetClock()
+      setClock()
       canHold = false
     }
   }
@@ -532,44 +597,54 @@ function init() {
           cells[index].style.backgroundColor = ''
         })
         const rowCleared = cells.splice(i, width)
-        cells = rowCleared.concat(cells)
+        cells = cells.slice(0, bufferSize).concat(rowCleared).concat(cells.slice(bufferSize))
         cells.forEach(cell => grid.append(cell))
         linesCleared++
         lines++
         if (lines % 10 === 0) {
           level++
-          recalculateTickRate()
-          resetClock()
+          calculateTickRate()
+          setClock()
         }
       }
     }
     if (linesCleared > 0) {
       score += linesCleared === 4 ? 800 * storedLevel : (linesCleared * 200 - 100) * storedLevel
-      updateScore()
-      updateLevel()
-      updateLines()
+      updateScoreboard()
     }
   }
 
-  // * Recalculate tick rate
-  function recalculateTickRate() {
+  // * Calculate tick rate
+  function calculateTickRate() {
     tickRate = Math.floor(1500 * Math.exp(-(level - 1) / 15))
+  }
+
+  // * Update scoreboard
+  function updateScoreboard() {
+    updateScore()
+    updateLevel()
+    updateLines()
   }
 
   // * Update score
   function updateScore() {
+    scoreBox.innerHTML = withComma(score)
+  }
+
+  // * Convert score from number to string with comma
+  function withComma(score) {
     if (score > 999999) {
-      scoreBox.innerHTML = '999,999'
+      return '999,999'
     } else if (score >= 1000) {
       if (score % 1000 < 10) {
-        scoreBox.innerHTML = `${Math.floor(score / 1000)},00${score % 1000}`
+        return `${Math.floor(score / 1000)},00${score % 1000}`
       } else if (score % 1000 < 100) {
-        scoreBox.innerHTML = `${Math.floor(score / 1000)},0${score % 1000}`
+        return `${Math.floor(score / 1000)},0${score % 1000}`
       } else {
-        scoreBox.innerHTML = `${Math.floor(score / 1000)},${score % 1000}`
+        return `${Math.floor(score / 1000)},${score % 1000}`
       }
     } else {
-      scoreBox.innerHTML = score
+      return score.toString()
     }
   }
 
@@ -583,57 +658,43 @@ function init() {
     linesBox.innerHTML = lines
   }
 
-  // * Game over if new tetromino in buffer
-  function gameOver() {
-    if (currentTetromino.every(position => {
-      return cells[currentPosition + position].classList.contains('buffer')
-    })) {
-      isGameOver = true
-      clearInterval(timerId)
-      const cellsArrays = [cells, previewCells, holdCells]
-      cellsArrays.forEach(cellsArray => {
-        cellsArray.forEach(cell => {
-          if (cell.classList.contains('tetromino')) {
-            cell.style.backgroundColor = '#777'
-          }
-        })
-      })
-      startButton.innerHTML = 'Restart'
-    }
-  }
-
   // * Start game
   function startGame() {
-    updateScore()
-    updateLevel()
-    updateLines()
+    updateScoreboard()
     newTetromino(randomIndex())
     while (upcomingTetrominoes[0] === 0) {
       updateUpcomingTetrominoes()
     }
     addUpcomingTetrominoes()
-    recalculateTickRate()
-    resetClock()
+    calculateTickRate()
+    setClock()
+    gameInProgress = true
   }
 
   // * Pause game
   function pauseGame() {
-    isPaused = true
+    gameInProgress = false
     clearInterval(timerId)
-    pauseScreen.style.display = 'block'
+    removeUpcomingTetrominoes()
+    if (heldTetromino) {
+      removeHeldTetromino()
+    }
   }
 
   // * Resume game
   function resumeGame() {
-    isPaused = false
-    resetClock()
-    pauseScreen.style.display = 'none'
+    gameInProgress = true
+    addUpcomingTetrominoes()
+    if (heldTetromino) {
+      addHeldTetromino()
+    }
+    setClock()
   }
 
-  // * Restart game after game over
-  function restartGame() {
+  // * Reset game
+  function resetGame() {
     cells.forEach(cell => {
-      cell.classList.remove('occupied', 'tetromino')
+      cell.classList.remove('occupied', 'tetromino', 'active')
       cell.style.backgroundColor = ''
     })
     removeUpcomingTetrominoes()
@@ -641,23 +702,21 @@ function init() {
       removeHeldTetromino()
     }
     resetVariables()
-    startGame()
   }
 
   // * Reset game variables
   function resetVariables() {
-    isGameOver = false
-    score = 0
-    level = 1
-    lines = 0
     upcomingTetrominoes = [0,0,0]
     heldTetromino = 0
     canHold = true
+    score = 0
+    level = 1
+    lines = 0
   }
 
   // * Handle keydown events - move / rotate / drop tetromino
   function handleKeyDown(e) {
-    if (isPaused || isGameOver) {
+    if (!gameInProgress) {
       return
     }
     switch (e.keyCode) {
@@ -703,33 +762,113 @@ function init() {
     hasRotated = false
   }
 
-  // * Handle click events - start / pause / resume / restart game
-  function handleStartBtnClick(e) {
-    switch (e.target.innerHTML) {
-      case 'Start':
-        startGame()
-        e.target.innerHTML = 'Pause'
-        break
-      case 'Pause':
-        pauseGame()
-        e.target.innerHTML = 'Resume'
-        break
-      case 'Resume':
-        resumeGame()
-        e.target.innerHTML = 'Pause'
-        break
-      case 'Restart':
-        restartGame()
-        e.target.innerHTML = 'Pause'
-        break
+  // * Show game over screen
+  function showEndScreen() {
+    if (score >= highScores[4][1]) {
+      popup.style.display = 'flex'
     }
-    e.target.blur()
+    endScreen.style.display = 'flex'
+    pauseButton.style.visibility = 'hidden'
+  }
+
+  // * Populate leaderboard with high scores
+  function populateLeaderboards() {
+    leaderboards.forEach(leaderboard => {
+      const names = leaderboard.querySelectorAll('td:first-child')
+      const scores = leaderboard.querySelectorAll('td:last-child')
+      highScores.forEach((pair, index) => {
+        names[index].innerHTML = pair[0]
+        scores[index].innerHTML = withComma(pair[1])
+      })
+    })
+  }
+
+  // * Sort high scores - top 5
+  function sortHighScores() {
+    highScores = playerHighScores.concat(placeholderScores).sort((a, b) => b[1] - a[1]).slice(0, 5)
   }
 
   // * Event listeners
   document.addEventListener('keydown', handleKeyDown)
   document.addEventListener('keyup', handleKeyUp)
-  startButton.addEventListener('click', handleStartBtnClick)
+
+  levelSlider.addEventListener('input', () => {
+    levelSpan.innerHTML = levelSlider.value
+  })
+
+  startButton.addEventListener('click', () => {
+    cells.forEach(cell => {
+      cell.classList.remove('occupied', 'tetromino', 'active')
+      cell.style.backgroundColor = ''
+    })
+    level = Number(levelSlider.value)
+    startScreen.style.display = 'none'
+    pauseButton.style.visibility = 'visible'
+    startGame()
+  })
+
+  pauseButton.addEventListener('click', () => {
+    pauseGame()
+    emptyGrid.style.display = 'flex'
+    pauseScreen.style.display = 'flex'
+    pauseButton.style.visibility = 'hidden'
+    removeGhost()
+  })
+
+  showGhostCheckbox.addEventListener('change', () => {
+    showGhost = showGhostCheckbox.checked ? true : false
+  })
+
+  resumeButton.addEventListener('click', () => {
+    emptyGrid.style.display = 'none'
+    pauseScreen.style.display = 'none'
+    pauseButton.style.visibility = 'visible'
+    resumeGame()
+    addGhost()
+  })
+
+  restartButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      resetGame()
+      emptyGrid.style.display = 'none'
+      pauseScreen.style.display = 'none'
+      endScreen.style.display = 'none'
+      level = Number(levelSlider.value)
+      startGame()
+      pauseButton.style.visibility = 'visible'
+    })
+  })
+
+  mainMenuButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      resetGame()
+      emptyGrid.style.display = 'none'
+      pauseScreen.style.display = 'none'
+      endScreen.style.display = 'none'
+      startScreen.style.display = 'flex'
+      scoreBox.innerHTML = ''
+      levelBox.innerHTML = ''
+      linesBox.innerHTML = ''
+    })
+  })
+
+  enterButton.addEventListener('click', () => {
+    const playerName = nameField !== '' ? nameField.value : 'Player 1'
+    playerHighScores.push([playerName, score])
+    localStorage.setItem('storedHighScores', JSON.stringify(playerHighScores))
+    sortHighScores()
+    populateLeaderboards()
+    popup.style.display = 'none'
+  })
+
+  // * Other code to execute on page load
+  if (localStorage.hasOwnProperty('storedHighScores')) {
+    playerHighScores = JSON.parse(localStorage.getItem('storedHighScores'))
+    sortHighScores()
+  } else {
+    highScores = placeholderScores
+  }
+  populateLeaderboards()
 }
 
 window.addEventListener('DOMContentLoaded', init)

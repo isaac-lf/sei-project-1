@@ -17,21 +17,13 @@ body {
   margin-right: 30px;
 }
 
-.start-button {
-  width: 120px;
-  height: 30px;
-  position: relative;
-  top: -120px;
-  cursor: pointer;
-}
-
 .hold-label {
   height: 30px;
   margin: 0;
   display: flex;
   align-items: flex-start;
   position: relative;
-  top: -90px;
+  top: -135px;
 }
 
 .hold {
@@ -42,7 +34,7 @@ body {
   justify-content: space-between;
   align-content: space-between;
   position: relative;
-  top: -90px;
+  top: -135px;
 }
 
 .hold div {
@@ -60,7 +52,7 @@ body {
   align-items: center;
   justify-content: space-evenly;
   position: relative;
-  top: -60px;
+  top: -105px;
   border: 1px solid #ddd;
 }
 
@@ -94,6 +86,10 @@ body {
   position: relative;
 }
 
+.buffer {
+  display: none;
+}
+
 .grid {
   width: 100%;
   height: 100%;
@@ -106,15 +102,73 @@ body {
   align-content: space-between;
 }
 
-.buffer {
-  display: none;
-}
-
 .grid div {
   width: calc(10% - 2px);
   height: calc(5% - 2px);
   border: 1px solid #ddd;
   background-color: #eee;
+}
+
+.grid div.ghost {
+  opacity: 0.5;
+}
+
+.start-screen {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  background-color: #eee;
+}
+
+.start-button {
+  width: 120px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.start-screen p {
+  height: 24px;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.level-span {
+  width: 15px;
+  text-align: center;
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
+
+.leaderboard {
+  width: 150px;
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+}
+
+.leaderboard tr:nth-child(even) {
+  background-color: white;
+}
+
+.leaderboard tr:nth-child(odd) {
+  background-color: #eee;
+}
+
+.leaderboard td {
+  width: 50%;
+}
+
+.leaderboard td:last-child {
+  text-align: right;
 }
 
 .pause-screen {
@@ -123,9 +177,129 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #ddd;
   background-color: #eee;
   display: none;
+}
+
+.resume-button {
+  width: 120px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.restart-button {
+  width: 120px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.main-menu-button {
+  width: 120px;
+  height: 30px;
+  cursor: pointer;
+}
+
+form {
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.end-screen {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  background-color: #eee;
+  display: none;
+}
+
+.end-screen p {
+  height: 24px;
+  margin: 0;
+}
+
+.pop-up {
+  width: 200px;
+  height: 200px;
+  position: absolute;
+  top: 200px;
+  left: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  background-color: #eee;
+  display: none;
+}
+
+.pop-up p {
+  height: 24px;
+  margin: 0;
+}
+
+input[type="text"] {
+  width: 120px;
+  height: 30px;
+  text-align: center;
+}
+
+input[type="text"]:focus::placeholder {
+  color: transparent;
+}
+
+.enter-button {
+  width: 120px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.overlay {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: black;
+  opacity: 0.5;
+  display: none;
+}
+
+.empty-grid {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-content: space-between;
+  display: none;
+}
+
+.empty-grid div {
+  width: calc(10% - 2px);
+  height: calc(5% - 2px);
+  border: 1px solid #ddd;
+  background-color: #eee;
 }
 
 .right-wrapper {
@@ -143,7 +317,7 @@ body {
   display: flex;
   align-items: flex-start;
   position: relative;
-  top: -135px;
+  top: -120px;
 }
 
 .preview {
@@ -154,7 +328,7 @@ body {
   justify-content: space-between;
   align-content: space-between;
   position: relative;
-  top: -135px;
+  top: -120px;
 }
 
 .preview div {
@@ -164,6 +338,11 @@ body {
   background-color: #eee;
 }
 
-.grid div.ghost {
-  opacity: 0.5;
+.pause-button {
+  width: 120px;
+  height: 30px;
+  position: relative;
+  top: 120px;
+  cursor: pointer;
+  visibility: hidden;
 }
