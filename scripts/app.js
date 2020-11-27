@@ -13,6 +13,7 @@ function init() {
   const levelSpan = document.querySelector('.level-span')
   const levelSlider = document.querySelector('input[type="range"]')
   const leaderboards = document.querySelectorAll('.leaderboard')
+  const trophies = document.querySelectorAll('.fa-trophy')
 
   const pauseButton = document.querySelector('.pause-button') 
 
@@ -20,15 +21,19 @@ function init() {
   const resumeButton = document.querySelector('.resume-button')
   const restartButtons = document.querySelectorAll('.restart-button')
   const mainMenuButtons = document.querySelectorAll('.main-menu-button')
-  const showGhostCheckbox = document.querySelector('input[type="checkbox')
+  const ghostCheckbox = document.querySelector('input[name="ghost-checkbox"')
+  const soundCheckbox = document.querySelector('input[name="sound-checkbox"')
 
   const endScreen = document.querySelector('.end-screen')
   const popup = document.querySelector('.pop-up')
+  const newHighScore = document.querySelector('.new-high-score')
   const nameField = document.querySelector('input[type="text"]')
   const enterButton = document.querySelector('.enter-button')
 
   const overlay = document.querySelector('.overlay')
   const emptyGrid = document.querySelector('.empty-grid')
+
+  const audio = document.querySelector('audio')
 
   // * Grid variables
   const width = 10
@@ -131,14 +136,14 @@ function init() {
 
   const tetrominoes = [O, L, J, S, Z, T, I]
   const tetrominoOrientations = ['wide', 'tall', 'wide', 'tall']
-  const tetrominoColors = ['yellow', 'orange', 'blue', 'green', 'red', 'purple', 'skyblue']
+  const tetrominoTextures = ['gold-marble', 'cork', 'denim', 'green-glass', 'brick', 'purple-silk', 'metal']
   
   let currentIndex
   let currentRotations
   let currentTetromino
   let currentOrientations
   let currentOrientation
-  let currentColor
+  let currentTexture
 
   const startingPosition = 14 + (width * bufferHeight)
   let currentPosition = startingPosition
@@ -165,6 +170,7 @@ function init() {
 
   let gameInProgress = false
   let showGhost = false
+  let soundOn = false
 
   let score = 0
   let level = 1
@@ -173,11 +179,11 @@ function init() {
   let highScores
   let playerHighScores = []
   const placeholderScores = [
-    ['', 50000],
-    ['', 25000],
-    ['', 10000],
-    ['', 5000],
-    ['', 1000]
+    ['Hero', 50000],
+    ['Smashboy', 25000],
+    ['Teewee', 10000],
+    ['Ricky J', 5000],
+    ['Cleveland', 2500]
   ]
   
   // * Create new tetromino
@@ -187,7 +193,7 @@ function init() {
     currentTetromino = currentRotations[0]
     currentOrientations = [...tetrominoOrientations]
     currentOrientation = currentOrientations[0]
-    currentColor = tetrominoColors[index]
+    currentTexture = tetrominoTextures[index]
     currentPosition = startingPosition
     while (wouldOverlapPiece(currentTetromino)) {
       currentPosition -= width
@@ -217,7 +223,7 @@ function init() {
   // * Return random tetromino
   function randomTetromino() {
     const index = randomIndex()
-    return [index, previewTetrominoes[index], tetrominoColors[index]]
+    return [index, previewTetrominoes[index], tetrominoTextures[index]]
   }
 
   // * Return random index of tetrominoes array
@@ -229,7 +235,7 @@ function init() {
   function addTetromino() {
     currentTetromino.forEach(position => {
       cells[currentPosition + position].classList.add('tetromino', 'active')
-      cells[currentPosition + position].style.backgroundColor = currentColor
+      cells[currentPosition + position].style.backgroundImage = `url("./assets/${currentTexture}.jpg")`
     })
     addGhost()
   }
@@ -238,7 +244,7 @@ function init() {
   function removeTetromino() {
     currentTetromino.forEach(position => {
       cells[currentPosition + position].classList.remove('tetromino', 'active')
-      cells[currentPosition + position].style.backgroundColor = ''
+      cells[currentPosition + position].style.backgroundImage = ''
     })
     removeGhost()
   }
@@ -248,7 +254,7 @@ function init() {
     upcomingTetrominoes.forEach((tetromino, index) => {
       tetromino[1].forEach(position => {
         previewCells[previewPositions[index] + position].classList.add('tetromino')
-        previewCells[previewPositions[index] + position].style.backgroundColor = tetromino[2]
+        previewCells[previewPositions[index] + position].style.backgroundImage = `url("./assets/${tetromino[2]}.jpg")`
       })
     })
   }
@@ -258,7 +264,7 @@ function init() {
     upcomingTetrominoes.forEach((tetromino, index) => {
       tetromino[1].forEach(position => {
         previewCells[previewPositions[index] + position].classList.remove('tetromino')
-        previewCells[previewPositions[index] + position].style.backgroundColor = ''
+        previewCells[previewPositions[index] + position].style.backgroundImage = ''
       })
     })
   }
@@ -266,6 +272,7 @@ function init() {
   // * Attempt to move tetromino left or right
   function moveTetromino(direction) {
     if (cannotMove(direction)) {
+      playAudio('cannot-move')
       return
     }
     removeTetromino()
@@ -360,6 +367,9 @@ function init() {
       clearLines()
       nextTetromino()
       gameOver()
+      if (!audio.src || audio.ended) {
+        playAudio('freeze')
+      }
       return true
     }
     return false
@@ -390,11 +400,13 @@ function init() {
       cellsArrays.forEach(cellsArray => {
         cellsArray.forEach(cell => {
           if (cell.classList.contains('tetromino')) {
+            cell.style.backgroundImage = ''
             cell.style.backgroundColor = '#777'
           }
         })
       })
       showEndScreen()
+      playAudio('game-over')
     }
   }
 
@@ -484,6 +496,7 @@ function init() {
     }
     if (wouldOverlapPiece(nextRotation)) {
       currentPosition = storedPosition
+      playAudio('cannot-move')
       return false
     }
     return true
@@ -498,7 +511,7 @@ function init() {
     currentTetromino.forEach(position => {
       if (!cells[currentPosition + position + (width * distance)].classList.contains('tetromino')) {
         cells[currentPosition + position + (width * distance)].classList.add('ghost')
-        cells[currentPosition + position + (width * distance)].style.backgroundColor = currentColor
+        cells[currentPosition + position + (width * distance)].style.backgroundImage = `url("./assets/${currentTexture}.jpg")`
       }
     })
   }
@@ -511,7 +524,7 @@ function init() {
     const distance = distanceToLowestPosition()
     currentTetromino.forEach(position => {
       cells[currentPosition + position + (width * distance)].classList.remove('ghost')
-      cells[currentPosition + position + (width * distance)].style.backgroundColor = ''
+      cells[currentPosition + position + (width * distance)].style.backgroundImage = ''
     })
   }
 
@@ -546,21 +559,25 @@ function init() {
     if (!heldTetromino) {
       removeTetromino()
       const index = currentIndex
-      heldTetromino = [index, previewTetrominoes[index], currentColor]
+      heldTetromino = [index, previewTetrominoes[index], currentTexture]
       addHeldTetromino()
       nextTetromino()
       setClock()
       canHold = false
+      playAudio('hold')
     } else if (canHold) {
       const storedIndex = heldTetromino[0]
       removeHeldTetromino()
       removeTetromino()
       const index = currentIndex
-      heldTetromino = [index, previewTetrominoes[index], currentColor]
+      heldTetromino = [index, previewTetrominoes[index], currentTexture]
       addHeldTetromino()
       newTetromino(storedIndex)
       setClock()
       canHold = false
+      playAudio('hold')
+    } else {
+      playAudio('cannot-hold')
     }
   }
 
@@ -568,7 +585,7 @@ function init() {
   function addHeldTetromino() {
     heldTetromino[1].forEach(position => {
       holdCells[holdPosition + position].classList.add('tetromino')
-      holdCells[holdPosition + position].style.backgroundColor = heldTetromino[2]
+      holdCells[holdPosition + position].style.backgroundImage = `url("./assets/${heldTetromino[2]}.jpg")`
     })
   }
 
@@ -576,7 +593,7 @@ function init() {
   function removeHeldTetromino() {
     heldTetromino[1].forEach(position => {
       holdCells[holdPosition + position].classList.remove('tetromino')
-      holdCells[holdPosition + position].style.backgroundColor = ''
+      holdCells[holdPosition + position].style.backgroundImage = ''
     })
   }
 
@@ -594,7 +611,7 @@ function init() {
       })) {
         rowIndices.forEach(index => {
           cells[index].classList.remove('occupied', 'tetromino')
-          cells[index].style.backgroundColor = ''
+          cells[index].style.backgroundImage = ''
         })
         const rowCleared = cells.splice(i, width)
         cells = cells.slice(0, bufferSize).concat(rowCleared).concat(cells.slice(bufferSize))
@@ -611,6 +628,7 @@ function init() {
     if (linesCleared > 0) {
       score += linesCleared === 4 ? 800 * storedLevel : (linesCleared * 200 - 100) * storedLevel
       updateScoreboard()
+      playAudio('lines-cleared')
     }
   }
 
@@ -679,6 +697,7 @@ function init() {
     if (heldTetromino) {
       removeHeldTetromino()
     }
+    playAudio('pause')
   }
 
   // * Resume game
@@ -695,11 +714,18 @@ function init() {
   function resetGame() {
     cells.forEach(cell => {
       cell.classList.remove('occupied', 'tetromino', 'active')
+      cell.style.backgroundImage = ''
       cell.style.backgroundColor = ''
     })
     removeUpcomingTetrominoes()
+    previewCells.forEach(cell => {
+      cell.style.backgroundColor = ''
+    })
     if (heldTetromino) {
       removeHeldTetromino()
+      holdCells.forEach(cell => {
+        cell.style.backgroundColor = ''
+      })
     }
     resetVariables()
   }
@@ -764,11 +790,13 @@ function init() {
 
   // * Show game over screen
   function showEndScreen() {
-    if (score >= highScores[4][1]) {
-      popup.style.display = 'flex'
-    }
     endScreen.style.display = 'flex'
     pauseButton.style.visibility = 'hidden'
+    if (score >= highScores[4][1]) {
+      overlay.style.display = 'flex'
+      popup.style.display = 'flex'
+      newHighScore.innerHTML = withComma(score)
+    }
   }
 
   // * Populate leaderboard with high scores
@@ -788,6 +816,14 @@ function init() {
     highScores = playerHighScores.concat(placeholderScores).sort((a, b) => b[1] - a[1]).slice(0, 5)
   }
 
+  // * Change audio source and play
+  function playAudio(filepath) {
+    if (soundOn) {
+      audio.src = `./assets/sounds/${filepath}.m4a`
+      audio.play()
+    }
+  }
+
   // * Event listeners
   document.addEventListener('keydown', handleKeyDown)
   document.addEventListener('keyup', handleKeyUp)
@@ -797,10 +833,6 @@ function init() {
   })
 
   startButton.addEventListener('click', () => {
-    cells.forEach(cell => {
-      cell.classList.remove('occupied', 'tetromino', 'active')
-      cell.style.backgroundColor = ''
-    })
     level = Number(levelSlider.value)
     startScreen.style.display = 'none'
     pauseButton.style.visibility = 'visible'
@@ -813,10 +845,6 @@ function init() {
     pauseScreen.style.display = 'flex'
     pauseButton.style.visibility = 'hidden'
     removeGhost()
-  })
-
-  showGhostCheckbox.addEventListener('change', () => {
-    showGhost = showGhostCheckbox.checked ? true : false
   })
 
   resumeButton.addEventListener('click', () => {
@@ -852,12 +880,24 @@ function init() {
     })
   })
 
+  ghostCheckbox.addEventListener('change', () => {
+    showGhost = ghostCheckbox.checked ? true : false
+  })
+
+  soundCheckbox.addEventListener('change', () => {
+    soundOn = soundCheckbox.checked ? true : false
+  })
+
   enterButton.addEventListener('click', () => {
-    const playerName = nameField !== '' ? nameField.value : 'Player 1'
+    const playerName = nameField.value !== '' ? nameField.value : 'Player 1'
     playerHighScores.push([playerName, score])
     localStorage.setItem('storedHighScores', JSON.stringify(playerHighScores))
     sortHighScores()
     populateLeaderboards()
+    trophies.forEach(trophy => {
+      trophy.style.color = 'gold'
+    })
+    overlay.style.display = 'none'
     popup.style.display = 'none'
   })
 
